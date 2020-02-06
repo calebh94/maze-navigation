@@ -1,31 +1,34 @@
-function opt_route = aStar(input_map, state, goal, map_struct, padding_range)
+function opt_route = aStar(input_map, state, goal, map_struct)
 
 updated_map(:,:) = input_map(:,:);
 
+switch_long_route = 0;
+
 % check the pass way of the gate and sure the optimal route will pass
 % through the center of the gate
-% bridge_array = map_struct.bridge_locations;
-% [~, n] = size(bridge_array);
-% 
-% for index_1 = 1 : n
-%     
-%     b_x = bridge_array(1, index_1);
-%     b_y = bridge_array(2, index_1);
-%     
-%     btm = updated_map(b_y+2,b_x);
-%     rgt = updated_map(b_y,b_x+2);
-%     
-%     if btm == 0 
-%         updated_map(b_y+1,b_x) = 0;
-%         updated_map(b_y-1,b_x) = 0;
-%     end
-%     
-%     if rgt == 0 
-%         updated_map(b_y,b_x+1) = 0;
-%         updated_map(b_y,b_x-1) = 0;
-%     end
-%     
-% end
+if switch_long_route == 1
+    bridge_array = map_struct.bridge_locations;
+    [~, n] = size(bridge_array);
+
+    for index_1 = 1 : n
+        b_x = bridge_array(1, index_1);
+        b_y = bridge_array(2, index_1);
+
+        btm = updated_map(b_y+2,b_x);
+        rgt = updated_map(b_y,b_x+2);
+
+        if btm == 0 
+            updated_map(b_y+1,b_x) = 0;
+            updated_map(b_y-1,b_x) = 0;
+        end
+
+        if rgt == 0 
+            updated_map(b_y,b_x+1) = 0;
+            updated_map(b_y,b_x-1) = 0;
+        end
+
+    end
+end
 
 OPEN = [];
 CLOSE = [];
@@ -147,7 +150,6 @@ while isempty(OPEN) == 0
                     parent_children_list = [parent_children_list; parent_children_pair];
                 end
             end
-            
         end
         
     end
@@ -167,47 +169,265 @@ end
 opt_route_list_flipped = flip(opt_route_list);
 [num_point, ~] = size(opt_route_list_flipped);
 
-for index_1 = 1 : num_point
+final_list = [final_list; opt_route_list_flipped(1,:)];
+
+% shift the route away from the wall
+% location of the positions:
+%
+%       1   top 2     3
+%   left 4  cell   right 5
+%       6  bottom 7   8
+%
+
+for index_2 = 2 : num_point
     
-    % chick the 8 locations of the current cell
-    x_p = opt_route_list_flipped(index_1,1);
-    y_p = opt_route_list_flipped(index_1,2);
+    % x, y of current point in the route list
+    x_p = opt_route_list_flipped(index_2,1); 
+    y_p = opt_route_list_flipped(index_2,2);
     
-    cell = input_map(y_p-1:y_p+1, x_p-1:x_p+1);
+    % x, y of previous point in the route list
+    x_p_0 = opt_route_list_flipped(index_2-1,1);
+    y_p_0 = opt_route_list_flipped(index_2-1,2);
     
-    % inversed the 0 an 1 for cell
-    for index_2 = 1:3
-        for index_3 = 1:3
-            if cell(index_2,index_3) == 0
-                cell(index_2, index_3) = 1;
-            else
-                cell(index_2, index_3) = 0;
+    % change of the cell coordinates for direction
+    del_x = x_p - x_p_0;
+    del_y = y_p - y_p_0;
+    
+    % for each point check 
+    top_index = 0;
+    btm_index = 0;
+    lft_index = 0;
+    rgt_index = 0;
+    tl_index = 0;
+    tr_index = 0;
+    bl_index = 0;
+    br_index = 0;
+    
+    top_cell = input_map(y_p-1, x_p);
+    lft_cell = input_map(y_p, x_p-1);
+    rgt_cell = input_map(y_p, x_p+1);
+    btm_cell = input_map(y_p+1, x_p);
+    
+    x_1 = x_p - 1;
+    x_2 = x_p;
+    x_3 = x_p + 1;
+    x_4 = x_1;
+    x_5 = x_3;
+    x_6 = x_1;
+    x_7 = x_2;
+    x_8 = x_3;
+    
+    y_1 = y_p - 1;
+    y_2 = y_1;
+    y_3 = y_1;
+    y_4 = y_p;
+    y_5 = y_4;
+    y_6 = y_p + 1;
+    y_7 = y_6;
+    y_8 = y_6;
+    
+    tl_cell = input_map(y_1, x_1);
+    tr_cell = input_map(y_3, x_3);
+    bl_cell = input_map(y_6, x_6);
+    br_cell = input_map(y_8, x_8);
+    
+    cell_1 = [x_1, y_1];
+    cell_2 = [x_2, y_2];
+    cell_3 = [x_3, y_3];
+    cell_4 = [x_4, y_4];
+    cell_5 = [x_5, y_5];
+    cell_6 = [x_6, y_6];
+    cell_7 = [x_7, y_7];
+    cell_8 = [x_8, y_8];
+    input_point = [x_p, y_p];
+    
+    % check if cell is in the final_list
+    [~, cell_1_idx] = ismember(cell_1, final_list, 'row');
+    [~, cell_2_idx] = ismember(cell_2, final_list, 'row');
+    [~, cell_3_idx] = ismember(cell_3, final_list, 'row');
+    [~, cell_4_idx] = ismember(cell_4, final_list, 'row');
+    [~, cell_5_idx] = ismember(cell_5, final_list, 'row');
+    [~, cell_6_idx] = ismember(cell_6, final_list, 'row');
+    [~, cell_7_idx] = ismember(cell_7, final_list, 'row');
+    [~, cell_8_idx] = ismember(cell_8, final_list, 'row');
+    
+    % check if cell is in the opt_route_list_flipped
+    [~, cell_1_check] = ismember(cell_1, opt_route_list_flipped, 'row');
+    [~, cell_3_check] = ismember(cell_3, opt_route_list_flipped, 'row');
+    [~, cell_6_check] = ismember(cell_6, opt_route_list_flipped, 'row');
+    [~, cell_8_check] = ismember(cell_8, opt_route_list_flipped, 'row');
+    
+    [~, input_idx] = ismember(input_point, final_list, 'row');
+    
+    if top_cell == 0
+        top_index = 1;
+    end
+    if btm_cell == 0
+        btm_index = 1;
+    end
+    if lft_cell == 0
+        lft_index = 1;
+    end
+    if rgt_cell == 0
+        rgt_index = 1;
+    end
+    if tl_cell == 0
+        tl_index = 1;
+    end
+    if tr_cell == 0
+        tr_index = 1;
+    end
+    if bl_cell == 0
+        bl_index = 1;
+    end
+    if br_cell == 0
+        br_index = 1;
+    end
+    
+    sum_index = top_index + btm_index + lft_index + rgt_index;
+    sum_index_corner = tl_index + tr_index + bl_index + br_index;
+    sum_index_total = sum_index + sum_index_corner;
+    
+    if sum_index_total == 0
+        if input_idx == 0
+            final_list = [final_list; input_point];
+        end
+    end
+    
+    if top_index == 1 && sum_index == 1
+        if del_x > 0
+            if cell_6_idx == 0 
+                final_list = [final_list; cell_6];
+            end
+            if cell_7_idx == 0
+                final_list = [final_list; cell_7];
+            end
+            if cell_8_idx == 0
+                final_list = [final_list; cell_8];
+            end
+        else
+            if cell_8_idx == 0
+                final_list = [final_list; cell_8];
+            end
+            if cell_7_idx == 0
+                final_list = [final_list; cell_7];
+            end
+            if cell_6_idx == 0
+                final_list = [final_list; cell_6];
             end
         end
     end
     
-    padding_array_y = [ ...
-        padding_range padding_range padding_range; ...
-        0.0 0.0 0.0; ...
-        -1*padding_range -1*padding_range -1*padding_range];
+    if btm_index == 1 && sum_index == 1
+        if del_x > 0
+            if cell_1_idx == 0
+                final_list = [final_list; cell_1];
+            end
+            if cell_2_idx == 0
+                final_list = [final_list; cell_2];
+            end
+            if cell_3_idx == 0
+                final_list = [final_list; cell_3];
+            end
+        else
+            if cell_3_idx == 0 
+                final_list = [final_list; cell_3];
+            end
+            if cell_2_idx == 0
+                final_list = [final_list; cell_2];
+            end
+            if cell_1_idx == 0
+                final_list = [final_list; cell_1];
+            end
+        end
+    end
     
-    padding_array_x = [ ...
-        padding_range 0.0 -1*padding_range; ...
-        padding_range 0.0 -1*padding_range; ... 
-        padding_range 0.0 -1*padding_range];
+    if lft_index == 1 && sum_index == 1
+        if del_y > 0
+            if cell_3_idx == 0 
+                final_list = [final_list; cell_3];
+            end
+            if cell_5_idx == 0
+                final_list = [final_list; cell_5];
+            end
+            if cell_8_idx == 0 
+                final_list = [final_list; cell_8];
+            end
+        else
+            if cell_8_idx == 0
+                final_list = [final_list; cell_8];
+            end
+            if cell_5_idx == 0
+                final_list = [final_list; cell_5];
+            end
+            if cell_3_idx == 0 
+                final_list = [final_list; cell_3];
+            end
+        end
+    end
     
-    sum_y = sum(cell.*padding_array_y, 2);
-    sum_x = sum(cell.*padding_array_x, 1);
+    if rgt_index == 1 && sum_index == 1
+        if del_y > 0
+            if cell_1_idx == 0 
+                final_list = [final_list; cell_1];
+            end
+            if cell_4_idx == 0
+                final_list = [final_list; cell_4];
+            end
+            if cell_6_idx == 0
+                final_list = [final_list; cell_6];
+            end
+        else
+            if cell_6_idx == 0 
+                final_list = [final_list; cell_6];
+            end
+            if cell_4_idx == 0
+                final_list = [final_list; cell_4];
+            end
+            if cell_1_idx == 0 
+                final_list = [final_list; cell_1];
+            end
+        end
+    end
     
-    [~, idx_y] = max(abs(sum_y));
-    [~, idx_x] = max(abs(sum_x));
+     % check if cell is in the final_list, AGAIN!
+    [~, cell_1_idx] = ismember(cell_1, final_list, 'row');
+    [~, cell_3_idx] = ismember(cell_3, final_list, 'row');
+    [~, cell_6_idx] = ismember(cell_6, final_list, 'row');
+    [~, cell_8_idx] = ismember(cell_8, final_list, 'row');
+%     [~, cell_7_idx] = ismember(cell_7, final_list, 'row');
+%     [~, cell_4_idx] = ismember(cell_4, final_list, 'row');
+%     [~, cell_5_idx] = ismember(cell_5, final_list, 'row');
+%     [~, cell_2_idx] = ismember(cell_2, final_list, 'row');
     
-    dx = sum_x(idx_x);
-    dy = sum_y(idx_y);
+    % for top-right corner
+    if tr_index == 1 && sum_index_corner == 1 
+        if cell_6_idx == 0 && cell_6_check == 0
+            final_list = [final_list; cell_6];
+        end 
+    end
     
-    opt_route_list_flipped(index_1,1) = x_p + dx;
-    opt_route_list_flipped(index_1,2) = y_p + dy;
+    % for top-left corner
+    if tl_index == 1 && sum_index_corner == 1 
+        if cell_8_idx == 0 && cell_8_check == 0
+            final_list = [final_list; cell_8];
+        end
+    end
+    
+    % for bottom-right corner
+    if br_index == 1 && sum_index_corner == 1
+        if cell_1_idx == 0 && cell_1_check == 0
+            final_list = [final_list; cell_1];
+        end
+    end
+    
+    % for bottom-left corner
+    if bl_index == 1 && sum_index_corner == 1
+        if cell_3_idx == 0 && cell_3_check == 0
+            final_list = [final_list; cell_3];
+        end
+    end
     
 end
 
-opt_route = opt_route_list_flipped;
+opt_route = final_list;

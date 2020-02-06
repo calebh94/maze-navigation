@@ -24,14 +24,11 @@ p_target = goals(:,end);
 
 % Initial control:
 u_k = zeros(1,Horizon-1);
-% u_k = init.u_k;
 
 du_k = zeros(1,Horizon-1);
-% du_k = init.u_k;
 
 % Initial trajectory:
 x_traj = zeros(3,Horizon);
-% x_traj = init.x_traj;
 
 avg_cost = 0;
 for k = 1:num_iter
@@ -56,8 +53,6 @@ for k = 1:num_iter
     
     % Estimate Value Function at terminal time
     Vxx(:,:,Horizon)= Q_f;
-%     display(size(p_target))
-%     display(p_target)
     Vx(:,Horizon) = Q_f * (x_traj(:,Horizon) - p_target); 
     V(Horizon) = 0.5 * (x_traj(:,Horizon) - p_target)' * Q_f * (x_traj(:,Horizon) - p_target); 
 
@@ -90,24 +85,15 @@ for k = 1:num_iter
         du(:,i) = l_k(:,i) + L_k(:,:,i) * dx(:,i);
         dx(:,i+1) = A(:,:,i) * dx(:,i) + B(:,:,i).* du(:,i);  
         u_new(:,i) = u_k(:,i) + gamma * du(:,i); %Control input
-        % Bound controls at [-1,1]
-%         if u_new(:,i) > 1
-%             u_new(:,i) = 1;
-%         elseif u_new(:,i) < -1
-%             u_new(:,i) = -1;
-%         end
     end 
     max_u = 1;
     min_u = -1;
     u_k = ((max_u - min_u) / 2) * tanh(u_new) + (max_u + min_u) / 2;
-%     u_k = tanh(u_new);
-    
+
     %---------------------------------------------> Simulation of the Nonlinear System
     [x_traj] = ddr_dynamics_sim(x0,u_new,Horizon,dt,0, params); %Propagate nonlineaer dynamics
     [Cost(:,k)] =  fnCostComputation(x_traj,u_k,p_targets,dt,Q_f,R,Vx);
     x1(k,:) = x_traj(1,:);
-   
-%     fprintf('iLQG Iteration %d,  Current Cost = %e \n',k,Cost(1,k));
     
     avg_cost_new = mean(Cost(1,:));
     
@@ -121,7 +107,6 @@ for k = 1:num_iter
        
 end
     
-% fprintf('Solution found!\n')
 x_traj = x_traj;
 u_traj = u_k;
 cost_traj = Cost;

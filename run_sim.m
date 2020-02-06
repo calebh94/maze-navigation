@@ -10,10 +10,10 @@ clc;
 
 % load map_1.mat;
 % map_name = 1;
-% 
+
 % load map_2.mat;
 % map_name = 2;
-% 
+
 load map_3.mat;
 map_name = 3;
 
@@ -79,12 +79,8 @@ DISPLAY_TYPE = 1; % 0 - displays map as dots, 1 - displays map as blocks
 % the assignment.
 
 % Loop through each map sample
-for i = 1:length(map_struct.map_samples) 
-    calc_ddp = 0;
-    ddp_step = 1;
-    action_list_ddp = zeros(params.horizon,1);
-    pred_states = zeros(3,params.horizon);
-    opt_route = zeros(2,2);
+for i = 37:length(map_struct.map_samples) 
+
     init.u_k = zeros(1,params.horizon-1);
     init.x_traj = zeros(3,params.horizon);
     
@@ -100,13 +96,7 @@ for i = 1:length(map_struct.map_samples)
     backup = 0;
     cnt = 1;
     at_goal = 0;
-    if map_name == 2
-        lookahead = 3;
-        params.gamma=0.2;
-        params.horizon = 20;
-    else
-        lookahead = 3;
-    end
+    lookahead = 3;
     recalculate = 0;
     
     % Init Data Storage
@@ -123,16 +113,11 @@ for i = 1:length(map_struct.map_samples)
     % updated once the car is within params.observation_radius
     initialize_state;
     orig_map = observed_map;
-    
-%     state.x = 31;
-%     state.y = 10;
-%     state.theta = 0;
-   
+
     % display the initial state
     if (DISPLAY_ON)
         display_environment;
     end
-    counter = 0;
     
     r_top = 1.0;
     r_bot = -1.0;
@@ -142,8 +127,6 @@ for i = 1:length(map_struct.map_samples)
     
     % loop until maxCount has been reached or goal is found
     while (state.moveCount < params.max_moveCount && flags ~= 2)
-        
-        counter = counter+1;
       
         %---------------------------------------
         %
@@ -160,42 +143,16 @@ for i = 1:length(map_struct.map_samples)
         % the optimal route from A* for the new bridge state.
                
         if diff < 0 || recalculate ==1
-%             opt_route = aStar(observed_map, state, goal, map_struct, 0.4);
-            opt_route = aStar_fixed_new(observed_map, state, goal, map_struct);
-
-            k = 0;
+            opt_route = aStar(observed_map, state, goal, map_struct);
             current_target = 2;
             recalculate = 0;
-            
-%             opt_route = opt_route(1:2:end,:);
         end
         
         % Check if target is final point
         if current_target+2 >= length(opt_route)
             opt_route(end+1, :) = opt_route(end,:);
             at_goal = 1;
-%             lookahead = current_target - length(opt_route) + 3;
         end
-        
-        % Check if path point is actually safe
-%         if (observed_map(opt_route(current_target,1),opt_route(current_target,2)) == 0)
-%             xx = opt_route(current_target,1);  yy = opt_route(current_target,2);
-%             if observed_map(xx+1,yy+1) == 1
-%                 opt_route(current_target,1) = xx+1;
-%                 opt_route(current_target,2) = yy+1;
-%             elseif observed_map(xx-1,yy+1) == 1
-%                 opt_route(current_target,1) = xx-1;
-%                 opt_route(current_target,2) = yy+1;
-%             elseif observed_map(xx+1,yy-1) == 1
-%                 opt_route(current_target,1) = xx+1;
-%                 opt_route(current_target,2) = yy-1;
-%             elseif observed_map(xx-1,yy-1) == 1
-%                 opt_route(current_target,1) = xx-1;
-%                 opt_route(current_target,2) = yy-1;
-%             else
-%                 current_target = current_target + 1;
-%             end
-%         end
         
         % Get error from target
         state_error.x = abs(state.x - opt_route(current_target,1));
@@ -212,7 +169,6 @@ for i = 1:length(map_struct.map_samples)
         
         % Get direction to next target after current one
         rad_error = atan2(opt_route(current_target+1,2) - opt_route(current_target,2), opt_route(current_target+1,1) - opt_route(current_target,1));
-%         display(rad_error);
         
         % Get distance to future points to see if closer
         for trgt=current_target:current_target+1
@@ -232,34 +188,24 @@ for i = 1:length(map_struct.map_samples)
             state_error_past.x = 100;
             state_error_past.y = 100;
         end
-%         if (sqrt(state_error_past.x^2 + state_error_past.y^2)) < sqrt(state_error.x^2 + state_error.y^2)
-%             current_target = current_target - 1;
-%         end
-        
-        
-
-            
+  
         % Calculating DDP solution
         calc_ddp = 0;
+        
         if calc_ddp == 0 && backup == 0
-%             ddp_goal.x = opt_route(current_target,1);
-%             ddp_goal.y = opt_route(current_target,2);
-%             ddp_goal.theta = rad_error;
-%             num_wpts = length(opt_route) - current_target;
+
             if at_goal == 1
                 num_wpts = 1;
             else
                 num_wpts = lookahead;
-    %             params.horizon = ceil((sqrt(state_error_future.x^2 + state_error_future.y^2)) * 0.85);
                 point_dis = sqrt(abs(state.x - opt_route(current_target-1+lookahead,1))^2 + abs(state.y - opt_route(current_target-1+lookahead,2))^2);
-                params.horizon = ceil(point_dis * 0.90 * (20/3));
-                params.iterations = ceil(point_dis * 0.85 * (200/3));
+                params.horizon = ceil(point_dis * 0.85 * (20/3));
+                params.iterations = ceil(point_dis * 0.85 * (50/3));
             end
             ddp_goal = zeros(3,num_wpts);
             for wpt=1:num_wpts
                 target_index = current_target-1+wpt;
                 goal_point(1:2) = opt_route(target_index,:);
-%                 display(target_index)
                 goal_point(3) = atan2(opt_route(target_index,2) - opt_route(target_index-1,2), opt_route(target_index,1) - opt_route(target_index-1,1));
                 ddp_goal(:,wpt) = goal_point';
             end
@@ -291,10 +237,7 @@ for i = 1:length(map_struct.map_samples)
                 final_pos_right.x = floor(pred_states(2,stp) + cos(pred_states(3,stp))*1.5 + sin(pred_states(3,stp))*1);
                 final_pos_left.x = floor(pred_states(2,stp) + sin(pred_states(3,stp))*1.5 - cos(pred_states(3,stp))*1);
             end
-%         end
-%             if (observed_map(final_pos.y, final_pos.x) == 0)
-
-%             if (observed_map(final_pos.y, final_pos.x) == 0 || observed_map(final_pos_right.y, final_pos_right.x) == 0 || observed_map(final_pos_left.y, final_pos_left.x) == 0)
+        end
             if (observed_map(final_pos.y, final_pos.x) == 0)
 
                 % IN WALL!
@@ -307,7 +250,6 @@ for i = 1:length(map_struct.map_samples)
                     calc_ddp = 0;
                 end
             end
-        end
             if backup == 1
                 cnt=cnt+1;
                 fprintf('Backing up!\n');
@@ -318,27 +260,8 @@ for i = 1:length(map_struct.map_samples)
             end
             if backup == 1
                 action_list_ddp(1) = -2;
-%                 cnt = 1;
-%                 backup = 1;
             end
-%             if backup == 1
-%                 backup = 0;
-%             end
-        
-        
-        % check if a reasonable solution was found:
-%         final_error.x = abs(pred_states(1,end) - opt_route(current_target,1));
-%         final_error.y = abs(pred_states(2,end) - opt_route(current_target,2));
-%         
-%         if sqrt(final_error.x^2 + final_error.y^2) > 3.0
-%             calc_ddp = 0;
-%             action_list_ddp(1) = -2;
-%         end
 
-%         if at_goal
-%             action_list_ddp(1) = 0;
-%         end
-        
         % current bridge state
         current_bridge_state = 0;
         for j = 1 : bridge_num
@@ -348,23 +271,8 @@ for i = 1:length(map_struct.map_samples)
             current_bridge_state = current_bridge_state + bridge_value;
         end
         
-        %%% First action from DDP
-        % action = action_list(k); 
-
-        %%% My example policy: slight turn
-        % Uncomment following line when we have the action list
-%         action = (r_top - r_bot) * rand() + r_bot;
-        
         %%% PID for angle direction
         % Get angle to goal
-%         rad_error = -atan((state.y - map_struct.goal.y)/ (state.x - map_struct.goal.y));
-%         deg_error = rad2deg(rad_error);
-%         p = 1/180;
-%         u = p * deg_error;
-%         action = u;       
-%         display(state)
-%         display(ddp_goal)
-%         display(state_error)
         action = action_list_ddp(1);
         ddp_step = ddp_step+1;
         
@@ -402,24 +310,16 @@ for i = 1:length(map_struct.map_samples)
         if (DISPLAY_ON)
             display_environment;
         end
-
-        % display some output
-        
-        % update differences parameter and update the index of action list
+       
+        % update differences parameter
         diff = updated_bridge_state - current_bridge_state;
-        k = k + 1;
         
+         % display some output
         Dataset.time = [Dataset.time, state.moveCount];
         Dataset.path = [Dataset.path, [state.x, state.y, state.theta]'];
         Dataset.processing_time = toc;
         name = strcat('map',string(Dataset.map), '_', string(Dataset.sample));
         save(name,'Dataset');
-        
-        
-
-        
-        % pause if you'd like to pause at each step
-        % pause;
         
     end
 end
